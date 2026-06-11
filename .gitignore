@@ -1,0 +1,7 @@
+config.py
+database/ngx.db
+data/
+logs/
+__pycache__/
+*.pyc
+.env
