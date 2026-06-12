@@ -1,0 +1,60 @@
+============================================================
+  NGX INTELLIGENCE REPORT — 2026-06-12
+  Generated: 07:24 UTC
+============================================================
+
+FULL RANKED WATCHLIST
+----------------------------------------
+  #   Symbol         Price   Mom   Div   Score
+  --------------------------------------------------
+  1   GTCO         ₦135.95    40   100    64.0
+  2   ZENITHBANK   ₦124.5     35   100    61.0
+  3   DANGSUGAR    ₦78.2      60    50    56.0
+  4   FIRSTHOLDCO  ₦69.0      60    50    56.0
+  5   OANDO        ₦53.0      70    10    46.0
+       ⚠ Zero dividend history. Momentum play only — not a long-term hold.
+  6   PZ           ₦94.95     60    10    40.0
+  7   WAPCO        ₦330.0     60    10    40.0
+       ⚠ Trading 42% above analyst target (Cordros ₦240.54). Score valid but price risky.
+  8   NAHCO        ₦179.5     40    10    28.0
+  9   BUACEMENT    ₦378.0     35    10    25.0
+  10  CADBURY      ₦69.0      35    10    25.0
+  11  CUSTODIAN    ₦81.25     35    10    25.0
+  12  UACN         ₦182.0     35    10    25.0
+  13  NB           ₦80.0      30    10    22.0
+  14  NGXGROUP     ₦137.4     30    10    22.0
+  15  FIDSON       ₦101.2     25    10    19.0
+
+TOP MOMENTUM PLAYS — 1 MONTH
+----------------------------------------
+  1. OANDO        ₦53.0     +0.0% (7d)  mom=70
+     ⚠ Zero dividend history. Momentum play only — not a long-term hold.
+  2. DANGSUGAR    ₦78.2     +0.0% (7d)  mom=60
+  3. FIRSTHOLDCO  ₦69.0     +0.0% (7d)  mom=60
+  4. PZ           ₦94.95    +0.0% (7d)  mom=60
+  5. WAPCO        ₦330.0    +0.0% (7d)  mom=60
+     ⚠ Trading 42% above analyst target (Cordros ₦240.54). Score valid but price risky.
+
+TOP DIVIDEND + GROWTH — LONG TERM
+----------------------------------------
+  1. GTCO         ₦135.95   div=100
+  2. ZENITHBANK   ₦124.5    div=100
+  3. DANGSUGAR    ₦78.2     div=50
+  4. FIRSTHOLDCO  ₦69.0     div=50
+  5. OANDO        ₦53.0     div=10
+
+HIGH CONVICTION — BOTH LISTS
+----------------------------------------
+  ★ DANGSUGAR    combined=56.0  ₦78.2
+  ★ FIRSTHOLDCO  combined=56.0  ₦69.0
+  ★ OANDO        combined=46.0  ₦53.0
+
+NOTES
+----------------------------------------
+  • Scores improve as daily price history accumulates (30-day avg)
+  • Dividend scores reflect confirmed NGX Pulse data only
+  • Run market_collector.py daily before generating report
+  • Run dividend_collector.py weekly to refresh yield data
+  • NOT FINANCIAL ADVICE. Verify before trading.
+
+============================================================
