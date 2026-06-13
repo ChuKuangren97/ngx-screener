@@ -246,3 +246,40 @@ def get_all_scores(conn: sqlite3.Connection, date: str) -> list[dict]:
     """
     cursor = conn.execute(query, (date,))
     return [dict(row) for row in cursor.fetchall()]
+def insert_financials(conn, financials: dict) -> None:
+    """
+    Inserts extracted financial data into the financials table.
+    financials: dict from QwenExtractor output.
+    """
+    if not financials:
+        return
+
+    query = """
+        INSERT OR REPLACE INTO financials
+        (symbol, period, eps, roe, revenue_growth, profit_growth,
+         debt_to_equity, source_pdf, extracted_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """
+
+    # Calculate ROE if missing but components present
+    roe = financials.get('ROE_percent')
+    if roe is None:
+        pat = financials.get('profit_after_tax')
+        equity = financials.get('total_equity')
+        if pat and equity and equity != 0:
+            roe = round((pat / equity) * 100, 2)
+
+    data = (
+        financials.get('symbol'),
+        financials.get('period') or 'FY2025',
+        financials.get('EPS'),
+        roe,
+        financials.get('revenue_growth_percent'),
+        financials.get('profit_growth_percent'),
+        financials.get('debt_to_equity'),
+        financials.get('source_pdf'),
+        financials.get('extracted_at')
+    )
+
+    conn.execute(query, data)
+    conn.commit()

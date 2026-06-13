@@ -225,12 +225,12 @@ python main.py --mode weekly
 - [x] Screener filters
 - [x] Daily text report
 
-### Phase 2 — AI layer
-- [ ] Quarterly PDF downloader from company IR pages
-- [ ] Qwen-powered PDF extraction (EPS, ROE, revenue growth)
-- [ ] Financials table population
-- [ ] News sentiment scoring via Qwen
-- [ ] Scoring engine updated with fundamentals weight
+### Phase 2 — AI layer ✅
+- [x] Quarterly PDF downloader from company IR pages
+- [x] Qwen-powered PDF extraction (EPS, ROE, revenue growth)
+- [x] Financials table population
+- [x] News sentiment scoring via Qwen
+- [x] Scoring engine updated with fundamentals weight
 
 ### Phase 3 — Streamlit GUI (Windows local)
 - [ ] Live watchlist dashboard with charts

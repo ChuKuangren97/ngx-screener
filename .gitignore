@@ -1,7 +1,37 @@
+# API keys and config
 config.py
+.env
+
+# Database
 database/ngx.db
-data/
+
+# Data files — never commit raw data
+data/snapshots/
+data/dividends/
+data/pdfs/
+data/extracted/
+
+# Generated reports
+reports/daily/
+reports/weekly/
+
+# Logs
 logs/
+
+# Python cache
 __pycache__/
 *.pyc
-.env
+*.pyo
+*.pyd
+.Python
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# VSCode/VSCodium
+.vscode/
+
+# Virtual environments
+venv/
+env/
