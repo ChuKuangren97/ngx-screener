@@ -4,19 +4,20 @@ config.py
 
 # Database
 database/ngx.db
+database/*.db
 
 # Data files — never commit raw data
-data/snapshots/
-data/dividends/
-data/pdfs/
-data/extracted/
+data/snapshots/*.json
+data/dividends/*.json
+data/extracted/*.json
+data/pdfs/*.pdf
 
-# Generated reports
-reports/daily/
-reports/weekly/
+# Generated reports — personal output
+reports/daily/*.txt
+reports/weekly/*.txt
 
 # Logs
-logs/
+logs/*.log
 
 # Python cache
 __pycache__/
@@ -29,9 +30,5 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# VSCode/VSCodium
+# VSCode / VSCodium
 .vscode/
-
-# Virtual environments
-venv/
-env/
