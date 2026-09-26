@@ -2,11 +2,15 @@
 
 NGX Screener collects live Nigerian Exchange data, scores every eligible stock on momentum, dividends, and fundamentals, and serves the results through a Streamlit dashboard and a daily text report. Underneath the tooling sits a single research question: which quantitative signals actually predict returns on the NGX?
 
+Nigeria has no Bloomberg for the NGX and no dedicated quant research terminal covering it. This started as a personal tool — a way to get better information before buying stock — and grew into something larger than originally planned. Personal utility still comes first, but the scope has expanded toward building actual factor research infrastructure for a market that has almost none.
+
+![NGX Screener Dashboard](assets/dashboard.png)
+
 ## Why NGX
 
 Global factor research mostly describes the US and Europe. Momentum, value, and quality premia come with decades of S&P and Stoxx evidence — and no guarantee they behave the same way in Lagos.
 
-The NGX differs in ways that matter for quant work: fewer listings, thinner liquidity, wider spreads, and a market where a handful of large caps dominate index moves. Signals built for deep, liquid markets can easily misfire here. You find out by testing locally, not by importing assumptions.
+The NGX differs in ways that matter for quant work: fewer listings, thinner liquidity, wider spreads, and a market where a handful of large caps dominate index moves. Signals built for deep, liquid markets can easily misfire here. You find out by testing locally, not by importing assumptions. There is also no dedicated financial intelligence platform for NGX retail investors — information sits scattered across NGX filings, company IR pages, Nairametrics, and Proshare, with no central tool that aggregates and scores it.
 
 That gap is exactly what makes the market interesting. 146 stocks is small enough to cover completely and structured enough to score systematically, and almost nobody publishes rigorous factor work on it.
 
