@@ -10,6 +10,22 @@ import config
 from src.database.db import get_connection
 
 
+def _norm_date(s: str) -> str:
+    """Normalizes common ex-date formats to ISO YYYY-MM-DD.
+    Returns '' when the value cannot be interpreted as a calendar date,
+    so string comparisons and strptime never silently misorder."""
+    if not s:
+        return ""
+    s = str(s).strip()[:10].replace("/", "-")
+    if len(s) == 10 and s[4] == "-" and s[7] == "-":
+        return s
+    try:
+        # Possibly DD-MM-YYYY
+        return datetime.strptime(s, "%d-%m-%Y").strftime("%Y-%m-%d")
+    except ValueError:
+        return ""
+
+
 class DividendScorer:
     """
     Calculates dividend score (0-100) for each stock.
@@ -64,13 +80,18 @@ class DividendScorer:
             return 0
 
         # Sum dividends from last 12 months
-        cutoff = datetime.now(timezone.utc).replace(year=datetime.now().year - 1)
+        now = datetime.now(timezone.utc)
+        try:
+            cutoff = now.replace(year=now.year - 1)
+        except ValueError:
+            # Feb 29 leap-day edge: fall back to Feb 28
+            cutoff = now.replace(year=now.year - 1, day=28)
         cutoff_str = cutoff.strftime("%Y-%m-%d")
 
         ttm_dividends = sum(
             d["amount"]
             for d in history
-            if d.get("ex_date", "") >= cutoff_str and d.get("amount")
+            if _norm_date(d.get("ex_date", "")) >= cutoff_str and d.get("amount")
         )
 
         if ttm_dividends == 0:
@@ -102,9 +123,9 @@ class DividendScorer:
 
         years_paid = set()
         for d in history:
-            ex_date = d.get("ex_date", "")
-            if ex_date and len(ex_date) >= 4:
-                years_paid.add(ex_date[:4])
+            iso = _norm_date(d.get("ex_date", ""))
+            if len(iso) >= 4:
+                years_paid.add(iso[:4])
 
         count = len(years_paid)
 
@@ -131,9 +152,9 @@ class DividendScorer:
         # Group dividends by year, sum per year
         by_year = {}
         for d in history:
-            ex_date = d.get("ex_date", "")
-            if ex_date and len(ex_date) >= 4 and d.get("amount"):
-                year = ex_date[:4]
+            iso = _norm_date(d.get("ex_date", ""))
+            if len(iso) >= 4 and d.get("amount"):
+                year = iso[:4]
                 by_year[year] = by_year.get(year, 0) + d["amount"]
 
         sorted_years = sorted(by_year.keys(), reverse=True)
@@ -166,7 +187,7 @@ class DividendScorer:
         if not history:
             return 0
 
-        latest_ex_date = history[0].get("ex_date", "")
+        latest_ex_date = _norm_date(history[0].get("ex_date", ""))
         if not latest_ex_date:
             return 0
 

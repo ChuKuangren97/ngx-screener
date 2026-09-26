@@ -115,6 +115,7 @@ class DividendCollector:
         for i, symbol in enumerate(symbols):
             print(f"[{i + 1}/{len(symbols)}] {symbol}")
             try:
+                req_before = self.request_count
                 history = self.fetch_dividends_for_symbol(symbol)
 
                 if history:
@@ -124,8 +125,8 @@ class DividendCollector:
                 else:
                     log_run(self.conn, f"dividends_{symbol}", "empty", 0)
 
-                # Only sleep if we actually made an API call (not cached)
-                if not self._is_cache_fresh(symbol):
+                # Sleep only when an API call was actually made (not on cache hit)
+                if self.request_count > req_before:
                     time.sleep(1.0)
 
             except Exception as e:

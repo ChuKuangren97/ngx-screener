@@ -114,7 +114,8 @@ class Screener:
             print(f"Excluded:            {len(excluded)}")
             print(f"\nEligible stocks:")
             for s in passed:
-                print(f"  {s['symbol']:<15} ₦{s['price']:<8} vol:{s['volume']:>12,}")
+                vol = s.get("volume") or 0
+                print(f"  {s.get('symbol', 'UNKNOWN'):<15} ₦{s.get('price') or 0:<8} vol:{vol:>12,}")
             print(f"\nExcluded (sample — first 10):")
             for sym, reason in list(excluded.items())[:10]:
                 print(f"  {sym:<15} {reason}")

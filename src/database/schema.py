@@ -108,5 +108,29 @@ def create_tables(conn: sqlite3.Connection):
         )
     """)
 
+    # Idempotent migration — add fundamentals columns to scores if missing
+    existing_cols = [row[1] for row in conn.execute("PRAGMA table_info(scores)").fetchall()]
+    if "fundamentals_score" not in existing_cols:
+        conn.execute("ALTER TABLE scores ADD COLUMN fundamentals_score REAL DEFAULT 45")
+    if "has_fundamentals" not in existing_cols:
+        conn.execute("ALTER TABLE scores ADD COLUMN has_fundamentals INTEGER DEFAULT 0")
+    if "weight_label" not in existing_cols:
+        conn.execute("ALTER TABLE scores ADD COLUMN weight_label TEXT DEFAULT 'M60+D40'")
+    conn.commit()
+
+    # Deduplicate financials (keep latest row per symbol+period) so
+    # INSERT OR REPLACE can work, then enforce uniqueness going forward
+    conn.execute("""
+        DELETE FROM financials
+        WHERE id NOT IN (
+            SELECT MAX(id) FROM financials GROUP BY symbol, period
+        )
+    """)
+    conn.execute("""
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_financials_symbol_period
+        ON financials(symbol, period)
+    """)
+    conn.commit()
+
     # Commit all table creations
     conn.commit()

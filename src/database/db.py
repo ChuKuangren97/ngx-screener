@@ -104,6 +104,10 @@ def insert_prices(conn: sqlite3.Connection, prices: list[dict]) -> None:
         if date_str and "T" in str(date_str):
             date_str = str(date_str).split("T")[0]
 
+        # Skip rows missing NOT NULL keys (symbol, date)
+        if not symbol or not date_str:
+            continue
+
         data.append(
             (
                 symbol,
@@ -173,10 +177,14 @@ def insert_dividends(
     data = []
     for d in dividends:
         # Map API dividend fields to DB columns
+        ex_date = d.get("ex_dividend_date", d.get("ex_date"))
+        # Skip rows missing NOT NULL ex_date
+        if not ex_date:
+            continue
         data.append(
             (
                 symbol,
-                d.get("ex_dividend_date", d.get("ex_date")),
+                ex_date,
                 d.get("record_date"),
                 d.get("pay_date"),
                 d.get("dividend_per_share", d.get("amount")),
@@ -266,7 +274,7 @@ def insert_financials(conn, financials: dict) -> None:
     if roe is None:
         pat = financials.get('profit_after_tax')
         equity = financials.get('total_equity')
-        if pat and equity and equity != 0:
+        if pat is not None and equity is not None and equity != 0:
             roe = round((pat / equity) * 100, 2)
 
     data = (

@@ -1,188 +1,81 @@
 # NGX Screener
 
-A personal Nigerian stock market intelligence system that automatically collects, scores, and ranks NGX-listed stocks for short-term momentum plays and long-term dividend investing.
+NGX Screener collects live Nigerian Exchange data, scores every eligible stock on momentum, dividends, and fundamentals, and serves the results through a Streamlit dashboard and a daily text report. Underneath the tooling sits a single research question: which quantitative signals actually predict returns on the NGX?
 
-Built with Python, SQLite, NGX Pulse API, and Qwen AI for PDF financial extraction. Designed for retail investors who want data-driven watchlists without paying for Bloomberg or doing manual spreadsheet work.
+## Why NGX
 
----
+Global factor research mostly describes the US and Europe. Momentum, value, and quality premia come with decades of S&P and Stoxx evidence — and no guarantee they behave the same way in Lagos.
 
-## What It Does
+The NGX differs in ways that matter for quant work: fewer listings, thinner liquidity, wider spreads, and a market where a handful of large caps dominate index moves. Signals built for deep, liquid markets can easily misfire here. You find out by testing locally, not by importing assumptions.
 
-**Daily** — run one command. The system:
-1. Fetches live prices and market data for all 146 NGX-listed stocks via API
-2. Filters out stocks outside your criteria (price range, liquidity, volatility)
-3. Scores every eligible stock across three dimensions: momentum, dividend, fundamentals
-4. Ranks them and generates a plain-text intelligence report
+That gap is exactly what makes the market interesting. 146 stocks is small enough to cover completely and structured enough to score systematically, and almost nobody publishes rigorous factor work on it.
 
-**Weekly** — automatically refreshes dividend history for all watchlist stocks.
+## What it does
 
-**On demand** — run the PDF extractor when new quarterly reports are published. Qwen reads the PDFs and updates fundamental scores automatically.
+A daily run pulls all 146 listings from the NGX Pulse API, filters down to the liquid tradeable set, scores each survivor on three dimensions, ranks them, and writes a plain-text intelligence report. A weekly refresh updates dividend history per watchlist stock (stale caches re-fetch, fresh ones don't). When companies publish new quarterly or annual reports, drop the PDFs in `data/pdfs/` and the extractor pulls EPS, ROE, revenue growth, and PAT growth out via Qwen. The dashboard carries the same data across six tabs — Market, Watchlist, Drilldown, Dividends, Fundamentals, Raw Data — for days when you want to poke around instead of reading the report.
 
----
+## Scoring
 
-## Scoring System
+Each stock gets three 0–100 scores. When PDF-extracted fundamentals exist, they combine as momentum × 0.5 + dividend × 0.3 + fundamentals × 0.2 (`M50+D30+F20`). When they don't, momentum and dividend split the weight (`M60+D40`) so uncovered stocks still rank fairly. Stocks without PDF data get a neutral 45 on fundamentals — benefit of the doubt, not a penalty.
 
-### Three-Dimensional Scoring
+### Momentum (0–100)
 
-| Dimension | Weight (with PDF data) | Weight (without PDF data) |
+| Component | Max | Logic |
 |---|---|---|
-| Momentum | 50% | 60% |
-| Dividend | 30% | 40% |
-| Fundamentals | 20% | — |
-
-When PDF data is available for a stock, the system uses `M50+D30+F20`. Otherwise falls back to `M60+D40` so stocks without PDFs still get ranked fairly.
-
----
-
-### Momentum Score (0–100)
-Targets 1-month price setups.
-
-| Component | Max Points | Logic |
-|---|---|---|
-| 7-day return | 40 | >=10% = 40, 5-10% = 25, 0-5% = 10, negative = 0 |
+| 7-day return | 40 | ≥10% = 40, 5–10% = 25, 0–5% = 10, negative = 0 |
 | Volume vs 30-day avg | 30 | >2x = 30, 1.5x = 20, 1x = 10, <1x = 0 |
-| Price stability | 20 | Inverse of daily swing — stable = higher score |
-| Sector trend | 10 | Net advancers in sector this week |
+| Price stability | 20 | Inverse of daily swing — stable scores higher |
+| Sector trend | 10 | Net advancers in the sector this week |
 
-> Volume scores improve significantly after 30 days of daily data collection.
+Volume needs ~30 days of daily history before it means much.
 
----
+### Dividend (0–100)
 
-### Dividend Score (0–100)
-Targets long-term income and 2-5 month holds.
-
-| Component | Max Points | Logic |
+| Component | Max | Logic |
 |---|---|---|
-| Trailing 12-month yield | 40 | >=8% = 40, 5-8% = 28, 3-5% = 15, <3% = 5 |
-| Payout consistency | 30 | 5+ years paying = 30, 3-4 = 20, 1-2 = 10 |
+| Trailing 12-month yield | 40 | ≥8% = 40, 5–8% = 28, 3–5% = 15, <3% = 5 |
+| Payout consistency | 30 | 5+ years = 30, 3–4 = 20, 1–2 = 10 |
 | DPS growth trend | 20 | Growing YoY = 20, flat = 10, declining = 0 |
-| Payout timing | 10 | Ex-date within 6 months = 10, 6-12 = 5, >12 = 0 |
+| Payout timing | 10 | Ex-date within 6 months = 10, 6–12 = 5, >12 = 0 |
 
----
+### Fundamentals (0–100)
 
-### Fundamentals Score (0–100)
-Extracted from company annual/quarterly PDFs via Qwen AI.
-
-| Component | Max Points | Logic |
+| Component | Max | Logic |
 |---|---|---|
-| EPS / Profit growth | 30 | Growing >5% = 30, flat = 15, declining = 0 |
-| Return on Equity | 25 | >=25% = 25, 15-25% = 18, 10-15% = 10 |
-| Revenue growth | 25 | >=20% = 25, 10-20% = 18, 0-10% = 10, negative = 0 |
-| Profit after tax growth | 20 | >=20% = 20, 0-20% = 12, -20-0% = 5, <-20% = 0 |
+| EPS / profit growth | 30 | Growing >5% = 30, flat = 15, declining = 0 |
+| Return on equity | 25 | ≥25% = 25, 15–25% = 18, 10–15% = 10 |
+| Revenue growth | 25 | ≥20% = 25, 10–20% = 18, 0–10% = 10, negative = 0 |
+| PAT growth | 20 | ≥20% = 20, 0–20% = 12, −20–0% = 5, <−20% = 0 |
 
-> Stocks without PDF data score 45/100 (neutral) on fundamentals — benefit of the doubt until data is available.
-
----
-
-## Screener Filters
-
-Stocks must pass all filters before scoring:
+### Screener filters
 
 | Filter | Value | Reason |
 |---|---|---|
-| Price range | N50 - N700 | Affordable for retail capital |
-| Minimum daily volume | 500,000 shares | Ensures liquidity to enter/exit |
-| Minimum market cap | N50 billion | Excludes micro-caps and shells |
-| Maximum daily swing | 10% | Excludes erratic/manipulated stocks |
-| Null volume | Excluded | Stocks with no trading activity |
+| Price range | ₦50 – ₦700 | Affordable for retail capital |
+| Minimum daily volume | 500,000 shares | Liquid enough to enter and exit |
+| Minimum market cap | ₦50 billion | Excludes micro-caps and shells |
+| Maximum daily swing | 10% | Excludes erratic / manipulated names |
+| Null volume | Excluded | No trading activity, no signal |
 
-Out of 146 NGX-listed stocks, roughly 15-20 pass filters at any given time.
-
----
-
-## Data Sources
-
-| Source | What it provides | Method | Cost |
-|---|---|---|---|
-| NGX Pulse API | Live prices, volume, market overview, dividend history | REST API | Free (100 req/day) |
-| Company IR pages | Quarterly and annual report PDFs | Manual download | Free |
-| Qwen AI (DashScope) | PDF financial extraction | API | Free tier available |
-
-### NGX Pulse API Request Budget (100/day)
-- 1 request -> `/stocks` (all 146 stocks)
-- 1 request -> `/market` (ASI, breadth, value)
-- 1 request -> `/news`
-- Up to 97 requests -> `/dividends` per stock (run weekly, not daily)
-
----
-
-## Project Structure
-
-```
-ngx-screener/
-|
-+-- main.py                        # Entry point -- all run modes
-+-- config.py                      # API keys, filters, constants (NOT in repo)
-+-- requirements.txt               # Python dependencies
-|
-+-- data/
-|   +-- snapshots/                 # Daily JSON from /stocks endpoint
-|   +-- dividends/                 # Per-stock dividend cache (JSON, 7-day TTL)
-|   +-- pdfs/                      # Downloaded company IR report PDFs
-|   +-- extracted/                 # Qwen PDF extraction output (JSON)
-|
-+-- database/
-|   +-- ngx.db                     # SQLite database (NOT in repo)
-|
-+-- src/
-|   +-- collectors/
-|   |   +-- market_collector.py    # Fetches prices + market overview daily
-|   |   +-- dividend_collector.py  # Fetches dividend history weekly
-|   |
-|   +-- ai/
-|   |   +-- qwen_extractor.py      # Auto-detects PDFs -> Qwen extraction -> JSON
-|   |
-|   +-- database/
-|   |   +-- schema.py              # SQLite table definitions
-|   |   +-- db.py                  # Insert/query/helper functions
-|   |
-|   +-- scoring/
-|   |   +-- momentum.py            # Momentum score (0-100)
-|   |   +-- dividend.py            # Dividend score (0-100)
-|   |   +-- fundamentals.py        # Fundamentals score (0-100) from PDF data
-|   |   +-- ranker.py              # Combines all scores, saves to DB
-|   |
-|   +-- filters/
-|   |   +-- screener.py            # Price/volume/cap/swing filters
-|   |
-|   +-- reports/
-|       +-- txt_report.py          # Daily plain-text intelligence report
-|
-+-- app/
-|   +-- app.py                     # Streamlit dashboard (Phase 3 -- local Windows)
-|
-+-- reports/
-|   +-- daily/                     # Daily .txt reports by date (NOT in repo)
-|   +-- weekly/                    # Weekly .txt reports (NOT in repo)
-|
-+-- logs/
-    +-- run.log                    # Pipeline audit trail (NOT in repo)
-```
-
----
+Around 15–20 listings pass at any given time.
 
 ## Setup
 
-### Requirements
-- Python 3.10+
-- NGX Pulse API key -- free at https://ngxpulse.ng/api
-- Qwen API key -- free tier at https://dashscope-intl.aliyuncs.com
+You need Python 3.10+, a free [NGX Pulse](https://ngxpulse.ng/api) key, and a free-tier [DashScope](https://dashscope-intl.aliyuncs.com) key for Qwen.
 
-### Install dependencies
 ```bash
-pip install requests pdfplumber pandas streamlit
+git clone <repo-url> ngx-screener
+cd ngx-screener
+pip install -r requirements.txt
 ```
 
-### Configure
-Create `config.py` in the project root. This file is gitignored and never committed:
+Create `config.py` in the project root. The file is gitignored — never commit keys:
 
 ```python
-# API Keys
-NGX_API_KEY = "your_ngx_pulse_key_here"
-QWEN_API_KEY = "your_qwen_dashscope_key_here"
+NGX_API_KEY = "your_ngx_pulse_key"
+QWEN_API_KEY = "your_dashscope_key"
 QWEN_MODEL = "qwen-plus"
 
-# Paths
 DB_PATH = "database/ngx.db"
 SNAPSHOT_DIR = "data/snapshots"
 DIVIDEND_DIR = "data/dividends"
@@ -192,7 +85,6 @@ REPORTS_DAILY = "reports/daily"
 REPORTS_WEEKLY = "reports/weekly"
 LOG_PATH = "logs/run.log"
 
-# Screener filters
 MIN_PRICE = 50
 MAX_PRICE = 700
 MIN_VOLUME = 500000
@@ -200,204 +92,63 @@ MIN_MARKET_CAP = 50_000_000_000
 MAX_DAILY_SWING = 0.10
 EXCLUDE_NULL_VOLUME = True
 
-# Scoring weights (fallback -- used when no PDF fundamentals data)
 MOMENTUM_WEIGHT = 0.6
 DIVIDEND_WEIGHT = 0.4
 
-# Starter watchlist
-WATCHLIST = [
-    "GTCO", "ZENITHBANK", "STANBIC", "NB", "MTNN",
-    "DANGSUGAR", "FIRSTHOLDCO", "OANDO", "FCMB", "VITAFOAM"
-]
+WATCHLIST = ["GTCO", "ZENITHBANK", "STANBIC", "NB", "MTNN",
+             "DANGSUGAR", "FIRSTHOLDCO", "OANDO", "FCMB", "VITAFOAM"]
 ```
 
-### Initialize database
+Then initialize the database:
+
 ```bash
 python main.py --mode setup
 ```
 
----
+## Running it
 
-## Usage
-
-### Daily run (manual -- run each trading day)
 ```bash
-python main.py --mode daily
+python main.py --mode daily    # fetch prices + score + report (~3 API calls)
+python main.py --mode weekly   # refresh dividends + full pipeline (~12 API calls)
+python main.py --mode score    # re-score from DB + report (zero API calls)
+python main.py --mode report   # report from existing scores (zero API calls)
 ```
-Fetches latest prices -> scores all dimensions -> generates report. ~10 seconds.
 
-### Weekly run (automated via Windows Task Scheduler)
 ```bash
-python main.py --mode weekly
-```
-Refreshes dividend history + full daily pipeline.
-
-### Report only (no API calls)
-```bash
-python main.py --mode report
-```
-Generates report from existing database data. Use when market is closed.
-
-### Run fundamentals extraction (when new PDFs available)
-```bash
-python src/scoring/fundamentals.py
-```
-Auto-detects all PDFs in `data/pdfs/`, extracts financials via Qwen, updates scores.
-
----
-
-## PDF Workflow
-
-The system auto-detects and matches PDFs to stock symbols -- no manual configuration needed.
-
-**Recommended naming convention:**
-```
-data/pdfs/SYMBOL_PERIOD.pdf
-e.g. GTCO_FY2025.pdf
-     ZENITHBANK_FY2025.pdf
-     DANGSUGAR_Q1_2026.pdf
+python src/scoring/fundamentals.py   # extract new PDFs via Qwen, update fund scores
+streamlit run app/app.py             # open the dashboard
 ```
 
-**Auto-detection also works** -- the extractor reads the first 5 pages of each PDF and matches the company name to a known NGX symbol. So even a file named `Zenith-Annual-Report-2025.pdf` will be correctly identified as `ZENITHBANK`.
-
-**Where to find PDFs:**
-
-| Company | Investor Relations Page |
-|---|---|
-| GTCO | gtcoplc.com/investor-relations |
-| Zenith Bank | zenithbank.com/investor-relations |
-| Dangote Sugar | dangotesugar.com.ng/investors |
-| FirstHoldCo | firstbanknigeria.com/investor-relations |
-| MTN Nigeria | mtn.com.ng/investor-relations |
-| Stanbic IBTC | stanbicibtcholdings.com/investor-relations |
-
-After downloading, place PDFs in `data/pdfs/` and run:
-```bash
-python src/scoring/fundamentals.py
-```
-
----
-
-## Sample Report Output
-
-```
-==============================================================
-  NGX INTELLIGENCE REPORT -- 2026-06-13
-  Generated: 22:06 UTC
-==============================================================
-
-MARKET OVERVIEW
-  ASI:          244,738.74
-  Change:           -0.05%
-  Volume:     1,721,871,986
-  Advancers:            36
-  Decliners:            37
-
-FULL RANKED WATCHLIST
-  #   Symbol         Price   Mom   Div  Fund   Score
-  1   GTCO         N135.95  40.0 100.0  40.0   58.0  M50+D30+F20
-  2   ZENITHBANK   N124.5   35.0 100.0  42.0   55.9  M50+D30+F20
-  3   DANGSUGAR    N78.2    60.0  50.0  35.0   52.0  M50+D30+F20
-     Warning: Still loss-making (PAT -N64B) despite revenue recovery.
-  4   FIRSTHOLDCO  N69.0    60.0  50.0  10.0   47.0  M50+D30+F20
-     Warning: Profit down 79% YoY per FY2025 report.
-
-FUNDAMENTALS SNAPSHOT (PDF-extracted)
-  Symbol            EPS    ROE%   RevGr%   PATGr%
-  GTCO           N25.43   25.7%     0.1%   -14.9%
-  ZENITHBANK      N7.64    6.1%     6.0%     1.0%
-  DANGSUGAR           --      --    24.6%   -61.7%
-  FIRSTHOLDCO         --    4.2%     6.9%   -79.0%
-
-HIGH CONVICTION -- BOTH LISTS
-  * DANGSUGAR    combined=52.0  N78.2
-  * FIRSTHOLDCO  combined=47.0  N69.0
-==============================================================
-```
-
----
-
-## Automation (Windows Task Scheduler)
-
-Set up weekly dividend refresh to run automatically every Sunday:
-
-1. Create `scheduler/weekly.bat`:
-```bat
-@echo off
-cd C:\path\to\ngx-screener
-C:\Users\USER\AppData\Local\Programs\Python\Python313\python.exe main.py --mode weekly
-```
-
-2. Open Task Scheduler -> Create Basic Task
-3. Trigger: Weekly -> Sunday -> 8:00 AM
-4. Action: Start a program -> point to `weekly.bat`
-
----
-
-## Database Schema
-
-SQLite database at `database/ngx.db` with 7 tables:
-
-| Table | Contents |
-|---|---|
-| `stocks` | Symbol, name, sector, market, shares outstanding |
-| `prices` | Daily price/volume per stock -- one row per stock per day |
-| `dividends` | Full dividend history -- ex-date, pay-date, amount per share |
-| `financials` | PDF-extracted fundamentals -- EPS, ROE, revenue/profit growth |
-| `scores` | Daily combined scores per stock |
-| `market_summary` | Daily ASI, breadth, value traded |
-| `run_log` | Pipeline audit trail -- every run logged with status |
-
----
-
-## Roadmap
-
-### Phase 1 -- Core pipeline (complete)
-- [x] NGX Pulse API integration (146 stocks)
-- [x] SQLite database with full schema
-- [x] Daily price and market data collection
-- [x] Weekly dividend history collection with 7-day cache
-- [x] Momentum scoring engine
-- [x] Dividend scoring engine
-- [x] Screener filters
-- [x] Daily plain-text intelligence report with manual override warnings
-
-### Phase 2 -- AI fundamentals layer (complete)
-- [x] Auto PDF detection and company name matching
-- [x] Qwen AI financial extraction (EPS, ROE, revenue/profit growth)
-- [x] Fundamentals scoring engine
-- [x] Three-dimensional combined scoring (M50+D30+F20)
-- [x] Fundamentals snapshot section in daily report
-- [x] Dynamic weight switching with/without PDF data
-
-### Phase 3 -- Streamlit GUI (planned)
-- [ ] Live watchlist dashboard with score breakdowns
-- [ ] Individual stock drilldown with price chart
-- [ ] Dividend calendar view
-- [ ] Fundamentals comparison table
-- [ ] Score history trend charts
-- [ ] Raw data explorer
-
----
-
-## Important Notes
-
-- **config.py is gitignored** -- create your own from the template above. Never commit API keys.
-- **database/ngx.db is gitignored** -- each user builds their own local database.
-- **data/ and reports/ contents are gitignored** -- PDFs, JSON, and reports stay local.
-- Scores improve significantly after 30 days of daily price collection (volume averages)
-- WAPCO (Lafarge): flagged in reports -- trading 42% above Cordros analyst target of N240.54
-- Not financial advice. Always verify before trading.
-
----
+Name PDFs `SYMBOL_PERIOD.pdf` (e.g. `GTCO_FY2025.pdf`). The extractor also reads the company name out of the PDF text, so naming helps but isn't required.
 
 ## Stack
 
-| Layer | Technology |
-|---|---|
-| Language | Python 3.13 |
-| Database | SQLite (single file, no server needed) |
-| Market data | NGX Pulse API (free tier, 100 req/day) |
-| PDF extraction | pdfplumber + Qwen AI (DashScope) |
-| Dashboard | Streamlit (Phase 3, local Windows) |
-| Hosting | Local machine (Windows / Linux Mint) |
+| Layer | Technology | Status |
+|---|---|---|
+| Language + database | Python 3.10+, SQLite | Live |
+| Market data + PDF parsing | requests, pdfplumber | Live |
+| PDF financial extraction | Qwen via DashScope | Live |
+| Dashboard | streamlit + plotly | Live |
+| Factor IC analysis | alphalens | Planned (v2.0) |
+| Strategy tearsheets | quantstats-reloaded | Planned (v3.0) |
+| Portfolio optimization | skfolio | Planned (v4.0) |
+
+Free-tier API budget is 100 req/day. Daily runs cost ~3 calls, weekly refresh ~12. Dividend responses cache per stock with a 7-day TTL.
+
+## Roadmap
+
+| Version | Description | Status |
+|---|---|---|
+| v0.x | Core pipeline: data collection, 3-D scoring, Streamlit dashboard | Done |
+| v1.0 | Factor Engine: registry-based scoring with per-stock attribution | Next |
+| v1.5 | Historical data: NGX OHLCV back to 2016, macro data, corporate actions | Planned |
+| v2.0 | Factor Validation Lab: IC, quintile returns, hit rate per NGX factor | Planned |
+| v2.5 | Hypothesis Registry: persistent research workflow with run cards | Planned |
+| v3.0 | Backtesting Engine: walk-forward strategy testing, quantstats tearsheets | Planned |
+| v4.0 | Portfolio Lab: skfolio allocation, risk analytics, optimization | Planned |
+| v5.0 | AI Research Analyst: Qwen interpretation layer over deterministic engine | Planned |
+| v6.0 | Kronos: ML forecasting signal, promoted only if it beats factor baselines | Planned |
+
+Each version tests the assumptions of the previous one before adding new complexity.
+
+*Not financial advice. Scores come from backtested heuristics, not recommendations — verify everything before trading.*

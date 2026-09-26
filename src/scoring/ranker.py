@@ -61,8 +61,10 @@ class Ranker:
         # Step 3 — combine
         combined = []
         for stock in eligible:
-            symbol = stock["symbol"]
-            price = stock.get("price", 0)
+            symbol = stock.get("symbol")
+            if not symbol:
+                continue
+            price = stock.get("price") or 0
 
             m_score = momentum_map.get(symbol, {}).get("momentum_score", 0)
             d_score = dividend_map.get(symbol, {}).get("dividend_score", 0)
@@ -132,8 +134,9 @@ class Ranker:
         """Persists combined scores to the scores table."""
         query = """
             INSERT OR REPLACE INTO scores
-            (symbol, date, momentum_score, dividend_score, combined_score, in_price_range)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (symbol, date, momentum_score, dividend_score, combined_score, in_price_range,
+             fundamentals_score, has_fundamentals, weight_label)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """
         data = [
             (
@@ -142,7 +145,10 @@ class Ranker:
                 r["momentum_score"],
                 r["dividend_score"],
                 r["combined_score"],
-                r["in_price_range"]
+                r["in_price_range"],
+                r.get("fundamentals_score", 45),
+                1 if r.get("has_fundamentals") else 0,
+                r.get("weight_label", "M60+D40")
             )
             for r in results
         ]

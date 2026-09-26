@@ -23,11 +23,11 @@ class FundamentalsScorer:
         self.conn = conn or get_connection()
 
     def get_financials(self, symbol: str) -> dict:
-        """Returns most recent financials for a symbol."""
+        """Returns most recent financials for a symbol (latest inserted row)."""
         query = """
             SELECT * FROM financials
             WHERE symbol = ?
-            ORDER BY extracted_at DESC
+            ORDER BY id DESC
             LIMIT 1
         """
         cursor = self.conn.execute(query, (symbol,))

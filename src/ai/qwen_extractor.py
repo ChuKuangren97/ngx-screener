@@ -49,6 +49,8 @@ COMPANY_NAME_PATTERNS = {
     'DANGCEM': ['dangote cement', 'dangote cement plc'],
     'BUACEMENT': ['bua cement', 'bua cement plc'],
     'WAPCO': ['lafarge africa', 'lafarge africa plc', 'wapco'],
+    'FCMB': ['fcmb', 'first city monument'],
+    'VITAFOAM': ['vitafoam', 'vitafoam nigeria'],
 }
 
 MAX_FINANCIAL_PAGES = 20
@@ -102,6 +104,10 @@ class QwenExtractor:
         """
         if pdf_dir is None:
             pdf_dir = config.PDF_DIR
+
+        if not os.path.isdir(pdf_dir):
+            print(f"PDF directory not found: {pdf_dir}")
+            return {}
 
         pdf_map = {}
         pdf_files = [f for f in os.listdir(pdf_dir) if f.lower().endswith('.pdf')]
@@ -284,9 +290,18 @@ Return ONLY the JSON object. No explanation. No markdown. No code blocks."""
         )
 
         try:
+            raw = ""
             with urllib.request.urlopen(req, timeout=60) as resp:
                 result = json.loads(resp.read())
-                raw = result['choices'][0]['message']['content'].strip()
+                choices = result.get("choices") if isinstance(result, dict) else None
+                if not choices or not isinstance(choices[0], dict):
+                    print(f"  Qwen API unexpected response shape: {str(result)[:200]}")
+                    return None
+                content = choices[0].get("message", {}).get("content")
+                if not content:
+                    print("  Qwen API returned empty content")
+                    return None
+                raw = content.strip()
 
                 # Strip markdown if present
                 if '```' in raw:

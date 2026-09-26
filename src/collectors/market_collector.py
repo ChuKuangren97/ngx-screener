@@ -81,12 +81,15 @@ class MarketCollector:
             market_data = self.fetch_market_overview()
             time.sleep(0.5)
 
-            if not stocks_data or "stocks" not in stocks_data:
+            stocks_list = (
+                stocks_data.get("stocks")
+                if isinstance(stocks_data, dict)
+                else None
+            )
+            if not stocks_list or not isinstance(stocks_list, list):
                 log_run(self.conn, "run", "error", 0, "No stocks data available")
                 print("CRITICAL: No stocks data fetched. Aborting run.")
                 return
-
-            stocks_list = stocks_data["stocks"]
 
             # Strip time component from trade_date
             for stock in stocks_list:

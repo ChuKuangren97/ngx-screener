@@ -18,13 +18,14 @@ OVERRIDES = {
 }
 
 
-def generate_report(results: list[dict] = None) -> str:
+def generate_report(results: list[dict] = None, mode: str = "daily") -> str:
     today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     conn = get_connection()
 
     if results is None:
         query = """
             SELECT s.symbol, s.combined_score, s.momentum_score, s.dividend_score,
+                   s.fundamentals_score, s.has_fundamentals, s.weight_label,
                    p.price, p.change_pct, p.change_7d_pct, p.volume,
                    st.sector,
                    f.eps, f.roe, f.revenue_growth, f.profit_growth
@@ -32,11 +33,11 @@ def generate_report(results: list[dict] = None) -> str:
             LEFT JOIN prices p ON s.symbol = p.symbol
                 AND p.date = (SELECT MAX(date) FROM prices WHERE symbol = s.symbol)
             LEFT JOIN stocks st ON s.symbol = st.symbol
-            LEFT JOIN financials f ON s.symbol = f.symbol
-            WHERE s.date = ?
+            LEFT JOIN financials f ON f.id = (SELECT MAX(f2.id) FROM financials f2 WHERE f2.symbol = s.symbol)
+            WHERE s.date = (SELECT MAX(date) FROM scores)
             ORDER BY s.combined_score DESC
         """
-        cursor = conn.execute(query, (today,))
+        cursor = conn.execute(query)
         results = [dict(row) for row in cursor.fetchall()]
 
     if not results:
@@ -60,13 +61,14 @@ def generate_report(results: list[dict] = None) -> str:
 
     # Market overview
     if market:
+        asi = market.get("asi") or 0
         lines.append("")
         lines.append("MARKET OVERVIEW")
         lines.append("-" * 40)
-        lines.append(f"  ASI:        {market.get('asi', 'N/A'):>12,.2f}")
-        lines.append(f"  Change:     {market.get('pct_change', 0):>+11.2f}%")
-        lines.append(f"  Volume:     {int(market.get('volume', 0)):>12,}")
-        lines.append(f"  Value:      ₦{market.get('value', 0)/1e9:>10.2f}B")
+        lines.append(f"  ASI:        {asi:>12,.2f}")
+        lines.append(f"  Change:     {(market.get('pct_change') or 0):>+11.2f}%")
+        lines.append(f"  Volume:     {int(market.get('volume') or 0):>12,}")
+        lines.append(f"  Value:      ₦{(market.get('value') or 0)/1e9:>10.2f}B")
         lines.append(f"  Advancers:  {market.get('advancers', 'N/A'):>12}")
         lines.append(f"  Decliners:  {market.get('decliners', 'N/A'):>12}")
 
@@ -144,7 +146,7 @@ def generate_report(results: list[dict] = None) -> str:
         for sym in crossover:
             match = next(r for r in results if r["symbol"] == sym)
             price = match.get("price") or 0
-            fund_flag = " [FUND DATA ✓]" if match.get("fundamentals_score") else ""
+            fund_flag = " [FUND DATA ✓]" if match.get("has_fundamentals") else ""
             lines.append(f"  ★ {sym:<12} combined={match.get('combined_score',0)}  ₦{price}{fund_flag}")
     else:
         lines.append("  None — build more daily history for stronger signals")
@@ -164,11 +166,11 @@ def generate_report(results: list[dict] = None) -> str:
 
     report = "\n".join(lines)
 
-    os.makedirs(config.REPORTS_DAILY, exist_ok=True)
-    report_path = os.path.join(config.REPORTS_DAILY, f"{today}.txt")
+    report_dir = config.REPORTS_WEEKLY if mode == "weekly" else config.REPORTS_DAILY
+    os.makedirs(report_dir, exist_ok=True)
+    report_path = os.path.join(report_dir, f"{today}.txt")
     with open(report_path, "w", encoding="utf-8") as f:
         f.write(report)
-
     print(f"Report saved to {report_path}")
     return report
 

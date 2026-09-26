@@ -3,6 +3,13 @@ import sys
 import argparse
 from datetime import datetime, timezone
 
+# Ensure UTF-8 console output on Windows (reports contain ₦, ★, ⚠)
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 # Ensure project root is in path
 project_root = os.path.abspath(os.path.dirname(__file__))
 if project_root not in sys.path:
@@ -36,11 +43,11 @@ def run_daily():
     # Step 2 — score and rank
     print("\n[2/3] Scoring and ranking...")
     ranker = Ranker()
-    results = ranker.run(verbose=False)
+    ranker.run(verbose=False)
 
-    # Step 3 — generate report
+    # Step 3 — generate report from freshly saved DB rows (full fields)
     print("\n[3/3] Generating report...")
-    report = generate_report(results)
+    report = generate_report()
     print(report)
 
     print("\nDaily run complete.")
@@ -70,14 +77,35 @@ def run_weekly():
     # Step 3 — score and rank
     print("\n[3/4] Scoring and ranking...")
     ranker = Ranker()
-    results = ranker.run(verbose=False)
+    ranker.run(verbose=False)
 
-    # Step 4 — generate report
+    # Step 4 — generate report from freshly saved DB rows (full fields)
     print("\n[4/4] Generating report...")
-    report = generate_report(results)
+    report = generate_report(mode="weekly")
     print(report)
 
     print("\nWeekly run complete.")
+
+
+def run_score():
+    """
+    Re-scores from existing DB data and generates a report.
+    Zero API calls — use when the market is closed or quota is low.
+    """
+    print("\n" + "="*60)
+    print(f"  NGX SCREENER — SCORE RUN (no API calls)")
+    print(f"  {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}")
+    print("="*60)
+
+    print("\n[1/2] Scoring and ranking from DB data...")
+    ranker = Ranker()
+    ranker.run(verbose=False)
+
+    print("\n[2/2] Generating report...")
+    report = generate_report()
+    print(report)
+
+    print("\nScore run complete.")
 
 
 def run_report_only():
@@ -106,11 +134,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--mode",
-        choices=["daily", "weekly", "report", "setup"],
+        choices=["daily", "weekly", "score", "report", "setup"],
         default="daily",
         help=(
             "daily  = fetch prices + score + report (run manually each day)\n"
             "weekly = refresh dividends + daily pipeline (run by scheduler)\n"
+            "score  = re-score from DB + report (zero API calls)\n"
             "report = generate report from existing DB data (no API calls)\n"
             "setup  = initialize database (run once on first use)"
         )
@@ -124,5 +153,7 @@ if __name__ == "__main__":
         run_weekly()
     elif args.mode == "report":
         run_report_only()
+    elif args.mode == "score":
+        run_score()
     elif args.mode == "setup":
         run_setup()
