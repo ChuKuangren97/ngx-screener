@@ -23,7 +23,7 @@ The current pipeline runs like this:
 
 NGX market data → liquidity filters → momentum/dividend/fundamental scoring → ranking → SQLite persistence and text report → Streamlit dashboard.
 
-A daily run pulls all 146 listings from the NGX Pulse API, filters to the liquid tradeable set (usually 15 to 20 names), scores each one, and writes a plain-text intelligence report. A weekly refresh updates dividend history per watchlist stock. When companies publish new quarterly or annual reports, drop the PDFs in `data/pdfs/` and the extractor pulls EPS, ROE, revenue growth, and PAT growth out through Qwen (DashScope). The dashboard carries the same data across six tabs for days when you want to explore instead of reading the report.
+A daily run pulls all 146 listings from the NGX Pulse API, filters to the liquid tradeable set (usually 15 to 20 names), scores each one, and writes a plain-text intelligence report. A weekly refresh updates dividend history per watchlist stock. When companies publish new quarterly or annual reports, drop the PDFs in `data/pdfs/` and the extractor pulls EPS, ROE, revenue growth, and PAT growth out through Qwen (DashScope). The dashboard carries the same data across six tabs for days when you want to explore instead of reading the report. The sidebar also carries an Operations panel with three buttons wired straight into `main.py`, so the pipeline runs without touching the command line: Daily Update calls `run_daily()` (fetch prices, score, write report, about 3 API calls), Weekly Refresh calls `run_weekly()` (dividend refresh plus the full pipeline, about 12 calls), and Recalculate Scores calls `run_score()` (re-score from stored data, zero API calls). A status block underneath shows when each stage last ran, read from the `run_log` table.
 
 ## Scoring
 
@@ -140,6 +140,8 @@ python src/scoring/fundamentals.py   # extract new PDFs via Qwen, update fund sc
 streamlit run app/app.py             # open the dashboard
 ```
 
+All of the above modes are also available from the dashboard sidebar under Operations, which is useful if you want to stay in the UI.
+
 Name PDFs `SYMBOL_PERIOD.pdf` (for example `GTCO_FY2025.pdf`). The extractor also reads the company name from the PDF text, so naming helps but is not required.
 
 ## Architecture
@@ -194,6 +196,7 @@ The free NGX Pulse tier allows 100 requests per day. A daily run costs about 3 c
 |---|---|---|
 | v0.x | Core pipeline: data collection, 3-D scoring, Streamlit dashboard | Done |
 | v1.0 | Factor Engine: registry-based scoring with per-stock attribution | Next |
+| v1.2 | Catalyst Radar: earnings calendar, pre-earnings setup flags, post-earnings reaction tracker | Planned |
 | v1.5 | Historical data: NGX OHLCV back to 2016, macro data, corporate actions | Planned |
 | v2.0 | Factor Validation Lab: IC, quintile returns, hit rate per NGX factor | Planned |
 | v2.5 | Hypothesis Registry: persistent research workflow with run cards | Planned |
