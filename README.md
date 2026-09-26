@@ -1,26 +1,33 @@
 # NGX Screener
 
-NGX Screener collects live Nigerian Exchange data, scores every eligible stock on momentum, dividends, and fundamentals, and serves the results through a Streamlit dashboard and a daily text report. Underneath the tooling sits a single research question: which quantitative signals actually predict returns on the NGX?
+A quantitative stock screening and factor research project for the Nigerian Exchange (NGX).
 
-Nigeria has no Bloomberg for the NGX and no dedicated quant research terminal covering it. This started as a personal tool — a way to get better information before buying stock — and grew into something larger than originally planned. Personal utility still comes first, but the scope has expanded toward building actual factor research infrastructure for a market that has almost none.
+[![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ![NGX Screener Dashboard](assets/dashboard.png)
 
-## Why NGX
+<!-- TODO: add screenshots for the ranked screener view, stock drilldown, and a sample daily report -->
 
-Global factor research mostly describes the US and Europe. Momentum, value, and quality premia come with decades of S&P and Stoxx evidence — and no guarantee they behave the same way in Lagos.
+## Why NGX?
 
-The NGX differs in ways that matter for quant work: fewer listings, thinner liquidity, wider spreads, and a market where a handful of large caps dominate index moves. Signals built for deep, liquid markets can easily misfire here. You find out by testing locally, not by importing assumptions. There is also no dedicated financial intelligence platform for NGX retail investors — information sits scattered across NGX filings, company IR pages, Nairametrics, and Proshare, with no central tool that aggregates and scores it.
+Most published factor research describes developed markets. Momentum, value, and quality premia come with decades of US and European evidence, and none of that automatically transfers to Lagos.
 
-That gap is exactly what makes the market interesting. 146 stocks is small enough to cover completely and structured enough to score systematically, and almost nobody publishes rigorous factor work on it.
+The NGX differs in ways that matter for quant work: fewer listings, thinner liquidity, wider spreads, and an index dominated by a handful of large caps. Signals calibrated on deep, liquid markets can misfire here. The only way to know is to test them against local data.
+
+That is also what makes the market worth covering. With 146 listings, one person can track the entire universe systematically, and almost nobody publishes rigorous factor work on it. The gap is the opportunity.
 
 ## What it does
 
-A daily run pulls all 146 listings from the NGX Pulse API, filters down to the liquid tradeable set, scores each survivor on three dimensions, ranks them, and writes a plain-text intelligence report. A weekly refresh updates dividend history per watchlist stock (stale caches re-fetch, fresh ones don't). When companies publish new quarterly or annual reports, drop the PDFs in `data/pdfs/` and the extractor pulls EPS, ROE, revenue growth, and PAT growth out via Qwen. The dashboard carries the same data across six tabs — Market, Watchlist, Drilldown, Dividends, Fundamentals, Raw Data — for days when you want to poke around instead of reading the report.
+The current pipeline runs like this:
+
+NGX market data → liquidity filters → momentum/dividend/fundamental scoring → ranking → SQLite persistence and text report → Streamlit dashboard.
+
+A daily run pulls all 146 listings from the NGX Pulse API, filters to the liquid tradeable set (usually 15 to 20 names), scores each one, and writes a plain-text intelligence report. A weekly refresh updates dividend history per watchlist stock. When companies publish new quarterly or annual reports, drop the PDFs in `data/pdfs/` and the extractor pulls EPS, ROE, revenue growth, and PAT growth out through Qwen (DashScope). The dashboard carries the same data across six tabs for days when you want to explore instead of reading the report.
 
 ## Scoring
 
-Each stock gets three 0–100 scores. When PDF-extracted fundamentals exist, they combine as momentum × 0.5 + dividend × 0.3 + fundamentals × 0.2 (`M50+D30+F20`). When they don't, momentum and dividend split the weight (`M60+D40`) so uncovered stocks still rank fairly. Stocks without PDF data get a neutral 45 on fundamentals — benefit of the doubt, not a penalty.
+Each eligible stock gets three 0–100 scores. When PDF-extracted fundamentals exist, the combined score is momentum × 0.5 + dividend × 0.3 + fundamentals × 0.2 (`M50+D30+F20`). When they don't, momentum and dividend split the weight (`M60+D40`) so uncovered stocks still rank fairly. Stocks without PDF data get a neutral 45 on fundamentals: benefit of the doubt, not a penalty.
 
 ### Momentum (0–100)
 
@@ -28,10 +35,10 @@ Each stock gets three 0–100 scores. When PDF-extracted fundamentals exist, the
 |---|---|---|
 | 7-day return | 40 | ≥10% = 40, 5–10% = 25, 0–5% = 10, negative = 0 |
 | Volume vs 30-day avg | 30 | >2x = 30, 1.5x = 20, 1x = 10, <1x = 0 |
-| Price stability | 20 | Inverse of daily swing — stable scores higher |
+| Price stability | 20 | Inverse of daily swing (stable scores higher) |
 | Sector trend | 10 | Net advancers in the sector this week |
 
-Volume needs ~30 days of daily history before it means much.
+Volume needs roughly 30 days of daily history before it carries much information.
 
 ### Dividend (0–100)
 
@@ -51,29 +58,44 @@ Volume needs ~30 days of daily history before it means much.
 | Revenue growth | 25 | ≥20% = 25, 10–20% = 18, 0–10% = 10, negative = 0 |
 | PAT growth | 20 | ≥20% = 20, 0–20% = 12, −20–0% = 5, <−20% = 0 |
 
-### Screener filters
+## Screener filters
 
 | Filter | Value | Reason |
 |---|---|---|
 | Price range | ₦50 – ₦700 | Affordable for retail capital |
 | Minimum daily volume | 500,000 shares | Liquid enough to enter and exit |
 | Minimum market cap | ₦50 billion | Excludes micro-caps and shells |
-| Maximum daily swing | 10% | Excludes erratic / manipulated names |
+| Maximum daily swing | 10% | Excludes erratic or manipulated names |
 | Null volume | Excluded | No trading activity, no signal |
 
-Around 15–20 listings pass at any given time.
+These are current project heuristics, not universal truths. They exist to keep the scored universe liquid and tradeable. If your capital base or risk tolerance differs, the values live in `config.py` and take seconds to change.
+
+## Dashboard
+
+Six tabs, all reading from the same SQLite database:
+
+- **Market**: ASI trend, breadth, session history
+- **Watchlist**: ranked eligible stocks with score breakdowns and warning flags
+- **Drilldown**: per-stock price and volume charts, score history, dividend record, fundamentals panel
+- **Dividends**: upcoming ex-dates plus historical dividend scores
+- **Fundamentals**: side-by-side PDF-extracted metrics with comparison charts
+- **Raw Data**: direct table explorer over the underlying data
+
+```bash
+streamlit run app/app.py
+```
 
 ## Setup
 
-You need Python 3.10+, a free [NGX Pulse](https://ngxpulse.ng/api) key, and a free-tier [DashScope](https://dashscope-intl.aliyuncs.com) key for Qwen.
+Requirements: Python 3.10+, a free [NGX Pulse](https://ngxpulse.ng/api) key, and a free-tier [DashScope](https://dashscope-intl.aliyuncs.com) key for Qwen.
 
 ```bash
-git clone <repo-url> ngx-screener
+git clone https://github.com/ChuKuangren97/ngx-screener ngx-screener
 cd ngx-screener
 pip install -r requirements.txt
 ```
 
-Create `config.py` in the project root. The file is gitignored — never commit keys:
+Create `config.py` in the project root. It is gitignored, so keys never get committed:
 
 ```python
 NGX_API_KEY = "your_ngx_pulse_key"
@@ -103,19 +125,14 @@ WATCHLIST = ["GTCO", "ZENITHBANK", "STANBIC", "NB", "MTNN",
              "DANGSUGAR", "FIRSTHOLDCO", "OANDO", "FCMB", "VITAFOAM"]
 ```
 
-Then initialize the database:
+## Running the screener
 
 ```bash
-python main.py --mode setup
-```
-
-## Running it
-
-```bash
-python main.py --mode daily    # fetch prices + score + report (~3 API calls)
-python main.py --mode weekly   # refresh dividends + full pipeline (~12 API calls)
-python main.py --mode score    # re-score from DB + report (zero API calls)
-python main.py --mode report   # report from existing scores (zero API calls)
+python main.py --mode setup    # create database and tables (first run only)
+python main.py --mode daily    # fetch prices, score, write report
+python main.py --mode weekly   # refresh dividends, then run the daily pipeline
+python main.py --mode score    # re-score from stored data, no API calls
+python main.py --mode report   # regenerate the report from stored scores
 ```
 
 ```bash
@@ -123,7 +140,35 @@ python src/scoring/fundamentals.py   # extract new PDFs via Qwen, update fund sc
 streamlit run app/app.py             # open the dashboard
 ```
 
-Name PDFs `SYMBOL_PERIOD.pdf` (e.g. `GTCO_FY2025.pdf`). The extractor also reads the company name out of the PDF text, so naming helps but isn't required.
+Name PDFs `SYMBOL_PERIOD.pdf` (for example `GTCO_FY2025.pdf`). The extractor also reads the company name from the PDF text, so naming helps but is not required.
+
+## Architecture
+
+The project is a straight pipeline with no hidden state:
+
+```mermaid
+flowchart TD
+    A[NGX Pulse API + PDF reports] --> B[Collectors: market, dividends, Qwen extraction]
+    B --> C[Screener: liquidity filters]
+    C --> D[Scoring: momentum, dividend, fundamentals]
+    D --> E[Ranker: combined scores]
+    E --> F[(SQLite)]
+    F --> G[Text reports]
+    F --> H[Streamlit dashboard]
+```
+
+```
+main.py                  # entry point: setup / daily / weekly / score / report
+config.py                # keys, paths, filter thresholds (gitignored)
+src/collectors/          # market_collector, dividend_collector (NGX Pulse)
+src/ai/                  # qwen_extractor (PDF financial extraction)
+src/filters/             # screener (liquidity filters)
+src/scoring/             # momentum, dividend, fundamentals, ranker
+src/database/            # schema + queries (7 tables)
+src/reports/             # daily/weekly text report generator
+app/                     # Streamlit dashboard (6 tabs)
+data/                    # snapshots, dividend cache, PDFs, extractions (local)
+```
 
 ## Stack
 
@@ -137,7 +182,11 @@ Name PDFs `SYMBOL_PERIOD.pdf` (e.g. `GTCO_FY2025.pdf`). The extractor also reads
 | Strategy tearsheets | quantstats-reloaded | Planned (v3.0) |
 | Portfolio optimization | skfolio | Planned (v4.0) |
 
-Free-tier API budget is 100 req/day. Daily runs cost ~3 calls, weekly refresh ~12. Dividend responses cache per stock with a 7-day TTL.
+Anything marked Planned is not installed, imported, or called anywhere. The three planned libraries each belong to a specific roadmap version, which is where they stay until then.
+
+## API budget
+
+The free NGX Pulse tier allows 100 requests per day. A daily run costs about 3 calls (all listings, market overview, news). A weekly dividend refresh costs about 12 (one per watchlist stock plus the daily set). Dividend responses cache per stock with a 7-day TTL, and the collector caps itself below the daily limit, so normal use stays far from the ceiling.
 
 ## Roadmap
 
@@ -155,8 +204,18 @@ Free-tier API budget is 100 req/day. Daily runs cost ~3 calls, weekly refresh ~1
 
 Each version tests the assumptions of the previous one before adding new complexity.
 
-*Not financial advice. Scores come from backtested heuristics, not recommendations — verify everything before trading.*
+## Research philosophy
+
+Nothing here assumes established factors work on the NGX. The current scores are deterministic heuristics built from local data, and the roadmap exists to check them: collect history, measure information coefficients and quintile returns, keep what survives, drop what doesn't. If momentum turns out to be noise on this market, the honest result is to say so and move on.
+
+## Limitations
+
+Liquidity on the NGX is thin, so volume and stability signals are noisier than the same metrics would be elsewhere. Historical coverage in the current build starts when you start collecting (there is no bundled history yet; that arrives in v1.5). Qwen's PDF extraction can misread tables, so fundamentals carry extraction error on top of reporting error. The scores are unvalidated heuristics at this stage: no factor in v0.x has passed a forward-return test. Treat everything as a hypothesis with a number attached.
+
+## Disclaimer
+
+NGX Screener is a research and educational tool, not financial advice. Scores are generated from the project's data and heuristics and should not be treated as recommendations. Verify underlying information before making investment decisions.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
