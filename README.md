@@ -156,3 +156,7 @@ Free-tier API budget is 100 req/day. Daily runs cost ~3 calls, weekly refresh ~1
 Each version tests the assumptions of the previous one before adding new complexity.
 
 *Not financial advice. Scores come from backtested heuristics, not recommendations — verify everything before trading.*
+
+## License
+
+MIT — see [LICENSE](LICENSE).
