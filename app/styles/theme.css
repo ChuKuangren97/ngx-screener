@@ -11,6 +11,18 @@ html, body, [class*="css"] {
 #MainMenu, footer, header { visibility: hidden; }
 .stDeployButton { display: none; }
 
+/* ── Keep sidebar expand control usable when sidebar is collapsed ──
+   (the expand button lives inside the hidden header above) */
+[data-testid="stExpandSidebarButton"] {
+    visibility: visible;
+    background: #111318;
+    border: 1px solid #1e2430;
+    border-radius: 4px;
+}
+[data-testid="stExpandSidebarButton"] svg {
+    color: #c8ff3e;
+}
+
 /* ── Main container ── */
 .main .block-container {
     padding: 1.5rem 2rem;
