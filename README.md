@@ -23,7 +23,7 @@ The current pipeline runs like this:
 
 NGX market data → liquidity filters → momentum/dividend/fundamental scoring → ranking → SQLite persistence and text report → Streamlit dashboard.
 
-A daily run pulls all 146 listings from the NGX Pulse API, filters to the liquid tradeable set (usually 15 to 20 names), scores each one, and writes a plain-text intelligence report. A weekly refresh updates dividend history per watchlist stock. When companies publish new quarterly or annual reports, drop the PDFs in `data/pdfs/` and the extractor pulls EPS, ROE, revenue growth, and PAT growth out through Qwen (DashScope). The dashboard carries the same data across six tabs for days when you want to explore instead of reading the report. The sidebar also carries an Operations panel with three buttons wired straight into `main.py`, so the pipeline runs without touching the command line: Daily Update calls `run_daily()` (fetch prices, score, write report, about 3 API calls), Weekly Refresh calls `run_weekly()` (dividend refresh plus the full pipeline, about 12 calls), and Recalculate Scores calls `run_score()` (re-score from stored data, zero API calls). A status block underneath shows when each stage last ran, read from the `run_log` table.
+A daily run pulls all 146 listings from the NGX Pulse API, filters to the liquid tradeable set (usually 15 to 20 names), scores each one, and writes a plain-text intelligence report. A weekly refresh updates dividend history per watchlist stock. When companies publish new quarterly or annual reports, drop the PDFs in `data/pdfs/` and the extractor pulls EPS, ROE, revenue growth, and PAT growth out through Qwen (DashScope). The dashboard carries the same data across six tabs for days when you want to explore instead of reading the report. The sidebar also carries an Operations panel with three buttons wired straight into `main.py`, so the pipeline runs without touching the command line: Daily Update calls `run_daily()` (fetch prices, score, write report, about 3 API calls), Weekly Refresh calls `run_weekly()` (dividend refresh plus the full pipeline, about 12 calls), and Recalculate Scores calls `run_score()` (re-score from stored data, zero API calls). A status block underneath shows when each stage last ran, read from the `run_log` table. A Catalyst Radar tab (v1.2) and News Scanner tab (v1.3) are being added — one tracks upcoming earnings setups, the other surfaces material NGX filings and news events before they show up on a top-gainers screen.
 
 ## Scoring
 
@@ -180,6 +180,8 @@ data/                    # snapshots, dividend cache, PDFs, extractions (local)
 | Market data + PDF parsing | requests, pdfplumber | Live |
 | PDF financial extraction | Qwen via DashScope | Live |
 | Dashboard | streamlit + plotly | Live |
+| abokiforex.app scraper | NGX corporate disclosures (200 filings/day) | Live (v1.3) |
+| GDELT DOC 2.0 | Nigerian financial news, 15-min updates, no API key | Live (v1.3) |
 | Factor IC analysis | alphalens | Planned (v2.0) |
 | Strategy tearsheets | quantstats-reloaded | Planned (v3.0) |
 | Portfolio optimization | skfolio | Planned (v4.0) |
@@ -197,6 +199,7 @@ The free NGX Pulse tier allows 100 requests per day. A daily run costs about 3 c
 | v0.x | Core pipeline: data collection, 3-D scoring, Streamlit dashboard | Done |
 | v1.0 | Factor Engine: registry-based scoring with per-stock attribution | Next |
 | v1.2 | Catalyst Radar: earnings calendar, pre-earnings setup flags, post-earnings reaction tracker | Planned |
+| v1.3 | News & Disclosure Scanner: NGX filing detection, news-to-price reaction tracking, unexplained move alerts | Planned |
 | v1.5 | Historical data: NGX OHLCV back to 2016, macro data, corporate actions | Planned |
 | v2.0 | Factor Validation Lab: IC, quintile returns, hit rate per NGX factor | Planned |
 | v2.5 | Hypothesis Registry: persistent research workflow with run cards | Planned |
